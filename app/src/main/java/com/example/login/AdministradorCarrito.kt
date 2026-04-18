@@ -1,24 +1,24 @@
 package com.example.login
 
-import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
-class AdministradorCarrito(private val context: Context) {
-    private val prefs = context.getSharedPreferences("MiTiendaPrefs", Context.MODE_PRIVATE)
+class AdministradorCarrito(
+    private val dataStoreManager: DataStoreManager,
+    private val scope: CoroutineScope
+) {
+    val idsDelCarrito: Flow<List<Int>> = dataStoreManager.carritoIds.map { strings ->
+        strings.mapNotNull { it.toIntOrNull() }
+    }
 
     fun agregarAlCarrito(productoId: Int) {
-        val idsActuales = obtenerIdsDelCarrito().toMutableList()
-        idsActuales.add(productoId)
-        guardarIds(idsActuales)
-    }
-
-    fun obtenerIdsDelCarrito(): List<Int> {
-        val stringIds = prefs.getString("carrito_ids", "") ?: ""
-        if (stringIds.isEmpty()) return emptyList()
-        return stringIds.split(",").mapNotNull { it.toIntOrNull() }
-    }
-
-    private fun guardarIds(ids: List<Int>) {
-        val stringIds = ids.joinToString(",")
-        prefs.edit().putString("carrito_ids", stringIds).apply()
+        scope.launch {
+            val actuales = dataStoreManager.carritoIds.first().toMutableSet()
+            actuales.add(productoId.toString())
+            dataStoreManager.guardarCarrito(actuales)
+        }
     }
 }

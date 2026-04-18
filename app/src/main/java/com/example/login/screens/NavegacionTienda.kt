@@ -13,6 +13,8 @@ fun TiendaApp(administradorCarrito: AdministradorCarrito, onLogout: () -> Unit) 
     var estadoPantalla by remember { mutableStateOf(PantallaActual.CATALOGO) }
     var productoSeleccionado by remember { mutableStateOf<Producto?>(null) }
 
+    val idsEnCarrito by administradorCarrito.idsDelCarrito.collectAsState(initial = emptyList())
+
     when (estadoPantalla) {
         PantallaActual.CATALOGO -> PantallaCatalogo(
             tienda = tienda,
@@ -32,7 +34,6 @@ fun TiendaApp(administradorCarrito: AdministradorCarrito, onLogout: () -> Unit) 
         )
 
         PantallaActual.CARRITO -> {
-            val idsEnCarrito = administradorCarrito.obtenerIdsDelCarrito()
             val productosEnCarrito = idsEnCarrito.mapNotNull { tienda.obtenerProductoPorId(it) }
 
             PantallaCarrito(

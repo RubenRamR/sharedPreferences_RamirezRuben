@@ -4,36 +4,29 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.login.screens.TiendaApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var dataStoreManager: DataStoreManager
+    private lateinit var administradorCarrito: AdministradorCarrito
+    private val appScope = CoroutineScope(Dispatchers.IO)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val prefsLogin = PreferenceManager(context = this)
-        val administradorCarrito =
-            AdministradorCarrito(context = this)
+        dataStoreManager = DataStoreManager(this)
+        administradorCarrito = AdministradorCarrito(dataStoreManager, appScope)
 
         enableEdgeToEdge()
         setContent {
@@ -41,21 +34,23 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                var screenState by remember {
-                    mutableStateOf(if (prefsLogin.isLoggedIn()) "TIENDA" else "LOGIN")
-                }
+                val scope = rememberCoroutineScope()
 
-                if (screenState == "LOGIN") {
+                val isLoggedIn by dataStoreManager.isUserLoggedIn.collectAsState(initial = false)
+
+                if (!isLoggedIn) {
                     LoginScreen(onLoginClick = {
-                        prefsLogin.saveLoginStatus(true)
-                        screenState = "TIENDA"
+                        scope.launch {
+                            dataStoreManager.guardarSesion(true)
+                        }
                     })
                 } else {
                     TiendaApp(
                         administradorCarrito = administradorCarrito,
                         onLogout = {
-                            prefsLogin.logout()
-                            screenState = "LOGIN"
+                            scope.launch {
+                                dataStoreManager.guardarSesion(false)
+                            }
                         }
                     )
                 }
@@ -120,21 +115,6 @@ fun LoginScreen(onLoginClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Entrar")
-        }
-    }
-}
-
-@Composable
-fun HomeScreen(onLogoutClick: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "¡Bienvenido al Home!", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { onLogoutClick() }) {
-            Text("Cerrar Sesión")
         }
     }
 }
